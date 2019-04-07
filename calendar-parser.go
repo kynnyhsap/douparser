@@ -4,10 +4,22 @@ import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"net/http"
+	"strconv"
+	"strings"
 )
 
-const eventsListSelector = "body > div.g-page > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > article"
-const calendarPageUrl = "https://dou.ua/calendar/page"
+const (
+	calendarPageUrl     = "https://dou.ua/calendar/page"
+	eventsListSelector  = "body > div.g-page > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > article"
+	titleSelector       = "h2.title"
+	linkSelector        = "h2.title a"
+	imageSelector       = "h2.title a img.logo"
+	descriptionSelector = "p.b-typo"
+	dateSelector        = "div.when-and-where span.date"
+	costSelector        = "div.when-and-where span"
+	locationSelector    = "div.when-and-where"
+	tagsSelector        = "div.more a"
+)
 
 type CalendarParser struct {
 	Events []Event
@@ -40,10 +52,7 @@ func (cp *CalendarParser) ParsePage(page int) error {
 	}
 
 	doc.Find(eventsListSelector).Each(func(i int, s *goquery.Selection) {
-		var event Event
-		event.ParseQuickInfo(s)
-
-		cp.Events = append(cp.Events, event)
+		cp.Events = append(cp.Events, cp.ParseEvent(s))
 	})
 
 	return nil
@@ -64,4 +73,41 @@ func (cp *CalendarParser) ParseFullCalendar() error {
 	}
 
 	return nil
+}
+
+func (cp *CalendarParser) ParseEvent(selection *goquery.Selection) Event {
+	var event Event
+
+	title := selection.Find(titleSelector).Text()
+	event.Title = strings.TrimSpace(title)
+
+	event.Link, _ = selection.Find(linkSelector).Attr("href")
+
+	event.Image, _ = selection.Find(imageSelector).Attr("src")
+
+	event.ID, _ = strconv.Atoi(strings.Split(event.Link, "/")[4])
+	description := selection.Find(descriptionSelector).Text()
+
+	event.Description = strings.TrimSpace(description)
+
+	date := selection.Find(dateSelector).Text()
+	event.RawDate = strings.TrimSpace(date)
+	selection.Find(dateSelector).Remove()
+
+	cost := selection.Find(costSelector).Text()
+	event.Cost = strings.TrimSpace(cost)
+	selection.Find(costSelector).Remove()
+
+	location := selection.Find(locationSelector).Text()
+	event.Location = strings.TrimSpace(location)
+	if event.Location == "Online" {
+		event.Online = true
+	}
+
+	selection.Find(tagsSelector).Each(func(i int, tagSelection *goquery.Selection) {
+		tag := tagSelection.Text()
+		event.Tags = append(event.Tags, strings.TrimSpace(tag))
+	})
+
+	return event
 }
