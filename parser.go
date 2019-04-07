@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	calendarPageUrl     = "https://dou.ua/calendar/page"
+	calendarURL         = "https://dou.ua/calendar"
 	eventsListSelector  = "body > div.g-page > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > article"
 	titleSelector       = "h2.title"
 	linkSelector        = "h2.title a"
@@ -21,16 +21,21 @@ const (
 	tagsSelector        = "div.more a"
 )
 
-type CalendarParser struct {
-	Events []Event
+type EventsParser struct {
+	FromArchive bool
+	Events      []Event
 }
 
-func (cp *CalendarParser) pageURL(page int) string {
-	return fmt.Sprintf("%s-%d/", calendarPageUrl, page)
+func (p *EventsParser) pageURL(page int) string {
+	if p.FromArchive {
+		return fmt.Sprintf("%s/archive/%d/", calendarURL, page)
+	}
+
+	return fmt.Sprintf("%s/page-%d/", calendarURL, page)
 }
 
-func (cp *CalendarParser) ParsePage(page int) error {
-	res, err := http.Get(cp.pageURL(page))
+func (p *EventsParser) ParsePage(page int) error {
+	res, err := http.Get(p.pageURL(page))
 	if err != nil {
 		return err
 	}
@@ -52,21 +57,20 @@ func (cp *CalendarParser) ParsePage(page int) error {
 	}
 
 	doc.Find(eventsListSelector).Each(func(i int, s *goquery.Selection) {
-		cp.Events = append(cp.Events, cp.ParseEvent(s))
+		p.Events = append(p.Events, p.ParseEvent(s))
 	})
 
 	return nil
 }
 
-func (cp *CalendarParser) ParseFullCalendar() error {
+func (p *EventsParser) ParseAll() error {
 	for page := 0; ; page++ {
-		err := cp.ParsePage(page)
+		err := p.ParsePage(page)
 
 		if err != nil {
 			if err.Error() == "404" {
 				break
 			} else {
-				//fmt.Printf("ERROR in `ParsePage(%d)` method: %s", i, err.Error())
 				return err
 			}
 		}
@@ -75,7 +79,7 @@ func (cp *CalendarParser) ParseFullCalendar() error {
 	return nil
 }
 
-func (cp *CalendarParser) ParseEvent(selection *goquery.Selection) Event {
+func (p *EventsParser) ParseEvent(selection *goquery.Selection) Event {
 	var event Event
 
 	title := selection.Find(titleSelector).Text()

@@ -7,11 +7,11 @@ import (
 )
 
 func main() {
-	var parser CalendarParser
+	var parser EventsParser
 
 	start := time.Now()
 
-	err := parser.ParseFullCalendar()
+	err := parser.ParseAll()
 	if err != nil {
 		log.Fatal(err) // =(
 	}
