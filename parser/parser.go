@@ -1,7 +1,8 @@
-package main
+package parser
 
 import (
-	"dou-parser/doudates"
+	"dou-parser/dates"
+	"dou-parser/events"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"net/http"
@@ -11,7 +12,7 @@ import (
 
 type EventsParser struct {
 	FromArchive bool
-	Events      []Event
+	Events      []events.Event
 }
 
 const (
@@ -80,8 +81,8 @@ func (p *EventsParser) ParseAll() error {
 	return nil
 }
 
-func (p *EventsParser) ParseEvent(selection *goquery.Selection) Event {
-	var event Event
+func (p *EventsParser) ParseEvent(selection *goquery.Selection) events.Event {
+	var event events.Event
 
 	title := selection.Find(titleSelector).Text()
 	event.Title = strings.TrimSpace(title)
@@ -98,7 +99,7 @@ func (p *EventsParser) ParseEvent(selection *goquery.Selection) Event {
 	date := selection.Find(dateSelector).Text()
 	selection.Find(dateSelector).Remove()
 	event.RawDate = strings.TrimSpace(date)
-	parsedDates := doudates.Parse(event.RawDate)
+	parsedDates := dates.Parse(event.RawDate)
 	event.Start = parsedDates[0]
 	event.End = parsedDates[1]
 

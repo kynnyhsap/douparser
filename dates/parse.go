@@ -1,4 +1,4 @@
-package doudates
+package dates
 
 import (
 	"strconv"

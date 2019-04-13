@@ -1,24 +1,25 @@
 package main
 
 import (
+	"dou-parser/parser"
 	"fmt"
 	"log"
 	"time"
 )
 
 func main() {
-	var parser EventsParser
+	var calendarParser parser.EventsParser
 
 	start := time.Now()
 
-	err := parser.ParseAll()
+	err := calendarParser.ParseAll()
 	if err != nil {
 		log.Fatal(err) // =(
 	}
 
-	fmt.Printf("Parsed %d events in %f seconds\n", len(parser.Events), time.Since(start).Seconds())
+	fmt.Printf("Parsed %d events in %f seconds\n", len(calendarParser.Events), time.Since(start).Seconds())
 
-	for i, event := range parser.Events {
+	for i, event := range calendarParser.Events {
 		if event.End.IsZero() {
 			fmt.Printf("%d(%s): %s \n", i+1, event.RawDate, event.Start)
 		} else {
