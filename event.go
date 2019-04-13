@@ -9,12 +9,12 @@ type Event struct {
 	Title       string
 	Description string
 	Location    string
-	Online      bool
 	Cost        string
 	Image       string
 	Link        string
+	RawDate     string
+	Start       time.Time
+	End         time.Time
+	Online      bool
 	Tags        []string
-	DateRaw     string
-	DateStart   time.Time
-	DateEnd     time.Time
 }
