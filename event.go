@@ -14,6 +14,7 @@ type Event struct {
 	Image       string
 	Link        string
 	Tags        []string
-	RawDate     string
-	Date        time.Time
+	DateRaw     string
+	DateStart   time.Time
+	DateEnd     time.Time
 }
