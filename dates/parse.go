@@ -34,13 +34,13 @@ func getYear(month time.Month) int {
 }
 
 func newDate(month time.Month, day int) time.Time {
-	return time.Date(getYear(month), month, day, 9, 0, 0, 0, locale)
+	return time.Date(getYear(month), month, day, 0, 0, 0, 0, locale)
 }
 
 func Parse(raw string) [2]time.Time {
 	var dates [2]time.Time
 
-	rawDates := strings.Split(raw, " — ")
+	rawDates := strings.Split(raw, "—")
 
 	if len(rawDates) < 2 {
 		meta := strings.Split(strings.TrimSpace(rawDates[0]), " ")
