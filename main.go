@@ -5,7 +5,6 @@ import (
 	"dou-parser/parser"
 	"fmt"
 	"log"
-	"time"
 )
 
 func printEvents(list []events.Event) {
@@ -25,14 +24,15 @@ func printEvents(list []events.Event) {
 func main() {
 	var p parser.EventsParser
 
-	//p.FromArchive = true
+	//start := time.Now()
+	//err := p.ParseAll()
+	//fmt.Printf("Parsed %d events in %f seconds\n\n", len(p.Events), time.Since(start).Seconds())
 
-	start := time.Now()
-	err := p.ParseAll()
-	fmt.Printf("Parsed %d events in %f seconds\n\n", len(p.Events), time.Since(start).Seconds())
+	err := p.ParseTags()
 	if err != nil {
-		log.Fatal(err) // =(
+		log.Fatal(err)
 	}
+	fmt.Println(p.Tags)
 
-	printEvents(p.Events)
+	//printEvents(p.Events)
 }

@@ -13,10 +13,12 @@ import (
 type EventsParser struct {
 	FromArchive bool
 	Events      []events.Event
+	Tags        []string
 }
 
 const (
 	calendarURL         = "https://dou.ua/calendar"
+	archiveURL          = "https://dou.ua/calendar/archive"
 	eventsListSelector  = "body > div.g-page > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > article"
 	titleSelector       = "h2.title"
 	linkSelector        = "h2.title a"
@@ -26,6 +28,8 @@ const (
 	costSelector        = "div.when-and-where span"
 	locationSelector    = "div.when-and-where"
 	tagsSelector        = "div.more a"
+
+	allTagsSelector = "body > div > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > div.page-head > h1 > select:nth-child(3) > option"
 )
 
 func (p *EventsParser) pageURL(page int) string {
@@ -118,4 +122,28 @@ func (p *EventsParser) ParseEvent(selection *goquery.Selection) events.Event {
 	})
 
 	return event
+}
+
+func (p *EventsParser) ParseTags() error {
+	res, err := http.Get(archiveURL)
+	if err != nil {
+		return err
+	}
+
+	doc, err := goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		return err
+	}
+
+	err = res.Body.Close()
+	if err != nil {
+		return err
+	}
+
+	doc.Find(allTagsSelector).Each(func(i int, s *goquery.Selection) {
+		tag := strings.TrimSpace(s.Text())
+		p.Tags = append(p.Tags, tag)
+	})
+
+	return nil
 }
