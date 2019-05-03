@@ -11,7 +11,6 @@ type Event struct {
 	Location    string
 	Cost        string
 	Image       string
-	Link        string
 	RawDate     string
 	Start       time.Time
 	End         time.Time

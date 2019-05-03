@@ -87,11 +87,10 @@ func (p *EventsParser) ParseEvent(selection *goquery.Selection) events.Event {
 	title := selection.Find(titleSelector).Text()
 	event.Title = strings.TrimSpace(title)
 
-	event.Link, _ = selection.Find(linkSelector).Attr("href")
-
 	event.Image, _ = selection.Find(imageSelector).Attr("src")
 
-	event.ID, _ = strconv.Atoi(strings.Split(event.Link, "/")[4])
+	link, _ := selection.Find(linkSelector).Attr("href")
+	event.ID, _ = strconv.Atoi(strings.Split(link, "/")[4])
 	description := selection.Find(descriptionSelector).Text()
 
 	event.Description = strings.TrimSpace(description)
