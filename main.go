@@ -31,21 +31,20 @@ func printEvents(list []events.Event) {
 }
 
 func main() {
-	var p parser.EventsParser
-
 	start := time.Now()
-	err := p.ParseAll()
-	fmt.Printf("Parsed %d events in %f seconds\n\n", len(p.Events), time.Since(start).Seconds())
+	err, eventsList := parser.ScrapCalendarEvents()
 
-	for _, event := range p.Events {
+	fmt.Printf("Parsed %d events in %f seconds\n\n",
+		len(eventsList), time.Since(start).Seconds())
+
+	for _, event := range eventsList {
 		fmt.Println(event.RawDate)
 	}
-	//printEvents(p.Events)
 
-	err = p.ParseTags()
+	err, tags := parser.ScrapEventTags()
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(p.Tags)
+	fmt.Println(tags)
 
 }

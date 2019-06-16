@@ -2,19 +2,13 @@ package parser
 
 import (
 	"dou-parser/dates"
-	"dou-parser/events"
+	. "dou-parser/events"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"net/http"
 	"strconv"
 	"strings"
 )
-
-type EventsParser struct {
-	FromArchive bool
-	Events      []events.Event
-	Tags        []string
-}
 
 const (
 	calendarURL         = "https://dou.ua/calendar"
@@ -36,65 +30,45 @@ func singleEventURL(id int) string {
 	return calendarURL + "/" + strconv.Itoa(id)
 }
 
-func (p *EventsParser) pageURL(page int) string {
-	if p.FromArchive {
-		return fmt.Sprintf("%s/archive/%d/", calendarURL, page)
-	}
-
+func eventsPageURL(page int) string {
 	return fmt.Sprintf("%s/page-%d/", calendarURL, page)
 }
 
-func (p *EventsParser) ParsePage(page int) error {
-	res, err := http.Get(p.pageURL(page))
+func scrapPage(page int) (error, []Event) {
+	events := make([]Event, 0)
+
+	res, err := http.Get(eventsPageURL(page))
 	if err != nil {
-		return err
+		return err, events
 	}
 
 	if res.StatusCode == 404 {
-		return fmt.Errorf("404")
+		return fmt.Errorf("404"), events
 	} else if res.StatusCode != 200 {
-		return fmt.Errorf("unhandled response status code: %d %s", res.StatusCode, res.Status)
+		return fmt.Errorf("unhandled response status code: %d %s", res.StatusCode, res.Status), events
 	}
 
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
-		return err
+		return err, events
 	}
 
 	err = res.Body.Close()
 	if err != nil {
-		return err
+		return err, events
 	}
 
-	doc.Find(eventsListSelector).Each(func(i int, s *goquery.Selection) {
-		event := p.ParseEvent(s)
-
+	doc.Find(eventsListSelector).Each(func(i int, selection *goquery.Selection) {
+		event := parseEvent(selection)
 		// scrap single event (image url, full description, address)
-
-		p.Events = append(p.Events, event)
+		events = append(events, event)
 	})
 
-	return nil
+	return nil, events
 }
 
-func (p *EventsParser) ParseAll() error {
-	for page := 0; ; page++ {
-		err := p.ParsePage(page)
-
-		if err != nil {
-			if err.Error() == "404" {
-				break
-			} else {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func (p *EventsParser) ParseEvent(selection *goquery.Selection) events.Event {
-	var event events.Event
+func parseEvent(selection *goquery.Selection) Event {
+	var event Event
 
 	title := selection.Find(titleSelector).Text()
 	event.Title = strings.TrimSpace(title)
@@ -132,26 +106,48 @@ func (p *EventsParser) ParseEvent(selection *goquery.Selection) events.Event {
 	return event
 }
 
-func (p *EventsParser) ParseTags() error {
+func ScrapCalendarEvents() (error, []Event) {
+	var events []Event
+
+	for page := 0; ; page++ {
+		err, parsedEventsFromPage := scrapPage(page)
+
+		events = append(events, parsedEventsFromPage...)
+
+		if err != nil {
+			if err.Error() == "404" {
+				break
+			} else {
+				return err, events
+			}
+		}
+	}
+
+	return nil, events
+}
+
+func ScrapEventTags() (error, []string) {
+	tags := make([]string, 0)
+
 	res, err := http.Get(archiveURL)
 	if err != nil {
-		return err
+		return err, tags
 	}
 
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
-		return err
+		return err, tags
 	}
 
 	err = res.Body.Close()
 	if err != nil {
-		return err
+		return err, tags
 	}
 
 	doc.Find(allTagsSelector).Each(func(i int, s *goquery.Selection) {
 		tag := strings.TrimSpace(s.Text())
-		p.Tags = append(p.Tags, tag)
+		tags = append(tags, tag)
 	})
 
-	return nil
+	return nil, tags
 }
