@@ -15,42 +15,90 @@ func TestGetYear(t *testing.T) {
 	}
 }
 
+// Test helper: Creates needed date from yyyy-mm-dd
+func d(year int, month time.Month, day int) time.Time {
+	return time.Date(year, month, day, 0, 0, 0, 0, locale)
+}
+
 func TestParse(t *testing.T) {
-	suits := []struct {
+	tables := []struct {
 		raw string
-
-		day1   int
-		year1  int
-		month1 time.Month
-
-		day2   int
-		year2  int
-		month2 time.Month
+		d1  time.Time
+		d2  time.Time
 	}{
-		{"14 апреля", 14, 2019, time.April, 0, 0, 0},
-		{"7 декабря", 7, 2019, time.December, 0, 0, 0},
-		{"1 марта", 1, 2020, time.March, 0, 0, 0},
-		{"20—21 июля", 20, 2019, time.July, 21, 2019, time.July},
-		{"20  —       21 июля", 20, 2019, time.July, 21, 2019, time.July},
-		{"    27 мая     — \n  27 сентября  ", 27, 2019, time.May, 27, 2019, time.September},
+		{
+			"14 апреля",
+			d(2019, time.April, 14),
+			time.Time{},
+		},
+		{
+			"7 декабря",
+			d(2019, time.December, 7),
+			time.Time{},
+		},
+		{
+			"1 марта",
+			d(2020, time.March, 1),
+			time.Time{},
+		},
+		{
+			"20—21 июля",
+			d(2019, time.July, 20),
+			d(2019, time.July, 21),
+		},
+		{
+			"    20      — 21 июля",
+			d(2019, time.July, 20),
+			d(2019, time.July, 21),
+		},
+		{
+			" 27 мая     —  2 сентября  ",
+			d(2019, time.May, 27),
+			d(2019, time.September, 2),
+		},
+		{
+			"16 апреля — 28 мая",
+			d(2019, time.April, 16),
+			d(2019, time.May, 28),
+		},
+		{
+			"21 декабря 2018",
+			d(2018, time.December, 21),
+			time.Time{},
+		},
+		{
+			"3 декабря 2013",
+			d(2013, time.December, 3),
+			time.Time{},
+		},
+		//{
+		//	"24 декабря — 18 марта",
+		//	d(2018, time.December, 24),
+		//	d(2019, time.March, 18),
+		//},
+		//{
+		//	"14 — 15 декабря 2018",
+		//	d(2018, time.December, 14),
+		//	d(2018, time.December, 15),
+		//},
 	}
 
-	for _, s := range suits {
-		got := Parse(s.raw)
+	for _, table := range tables {
+		got := Parse(table.raw)
 
 		first := got[0]
-		if first.Year() != s.year1 || first.Month() != s.month1 || first.Day() != s.day1 {
-			t.Errorf("Want: %d-%d-%d\nGot: %d-%d-%d", s.year1, s.month1, s.day1, first.Year(), first.Month(), first.Day())
+		if !first.Equal(table.d1) {
+			t.Error("Want: ", table.d1, "\nGot: ", first)
 		}
 
 		second := got[1]
-		if s.day2 == 0 || s.month2 == 0 || s.year2 == 0 {
+		if table.d2.IsZero() {
 			if !second.IsZero() {
-				t.Errorf("Expected: zero date\nGot: %d-%d-%d", second.Year(), first.Month(), first.Day())
+				t.Error("Want: zero date\nGot: ", second)
 			}
 		} else {
 			if second.IsZero() {
-				t.Errorf("Expected: %d-%d-%d\nGot: zero date", s.year2, s.month2, s.day2)
+				t.Error("Want: ", table.d2, "\nGot: zero date")
 			}
 		}
 	}

@@ -5,15 +5,16 @@ import (
 )
 
 type Event struct {
-	ID          int
-	Title       string
-	Description string
-	Location    string
-	Cost        string
-	Image       string
-	RawDate     string
-	Start       time.Time
-	End         time.Time
-	Online      bool
-	Tags        []string
+	ID               int
+	Online           bool
+	Tags             []string
+	Start            time.Time
+	End              time.Time
+	RawDate          string
+	Title            string
+	ShortDescription string
+	FullDescription  string
+	Location         string
+	Cost             string
+	Image            string
 }

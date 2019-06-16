@@ -32,6 +32,10 @@ const (
 	allTagsSelector = "body > div > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > div.page-head > h1 > select:nth-child(3) > option"
 )
 
+func singleEventURL(id int) string {
+	return calendarURL + "/" + strconv.Itoa(id)
+}
+
 func (p *EventsParser) pageURL(page int) string {
 	if p.FromArchive {
 		return fmt.Sprintf("%s/archive/%d/", calendarURL, page)
@@ -63,7 +67,11 @@ func (p *EventsParser) ParsePage(page int) error {
 	}
 
 	doc.Find(eventsListSelector).Each(func(i int, s *goquery.Selection) {
-		p.Events = append(p.Events, p.ParseEvent(s))
+		event := p.ParseEvent(s)
+
+		// scrap single event (image url, full description, address)
+
+		p.Events = append(p.Events, event)
 	})
 
 	return nil
@@ -97,7 +105,7 @@ func (p *EventsParser) ParseEvent(selection *goquery.Selection) events.Event {
 	event.ID, _ = strconv.Atoi(strings.Split(link, "/")[4])
 	description := selection.Find(descriptionSelector).Text()
 
-	event.Description = strings.TrimSpace(description)
+	event.ShortDescription = strings.TrimSpace(description)
 
 	date := selection.Find(dateSelector).Text()
 	selection.Find(dateSelector).Remove()
