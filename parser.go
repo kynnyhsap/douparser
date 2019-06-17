@@ -3,8 +3,8 @@ package dou_parser
 import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/tobira-shoe/dou-events-parser/dates"
 	. "github.com/tobira-shoe/event-models"
-	"github.com/tobira-show/dou-events-parser/dates"
 	"net/http"
 	"strconv"
 	"strings"
