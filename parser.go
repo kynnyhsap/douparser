@@ -1,4 +1,4 @@
-package dou_parser
+package parser
 
 import (
 	"fmt"
@@ -106,7 +106,7 @@ func parseEvent(selection *goquery.Selection) DouEvent {
 	return event
 }
 
-func ScrapCalendarEvents() (error, []DouEvent) {
+func ParseCalendarEvents() (error, []DouEvent) {
 	var events []DouEvent
 
 	for page := 0; ; page++ {
@@ -126,7 +126,7 @@ func ScrapCalendarEvents() (error, []DouEvent) {
 	return nil, events
 }
 
-func ScrapEventTags() (error, []string) {
+func ParseEventTags() (error, []string) {
 	tags := make([]string, 0)
 
 	res, err := http.Get(archiveURL)
