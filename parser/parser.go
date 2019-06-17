@@ -2,9 +2,9 @@ package parser
 
 import (
 	"dou-parser/dates"
-	. "dou-parser/events"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	. "github.com/tobira-shoe/event-models"
 	"net/http"
 	"strconv"
 	"strings"
@@ -34,8 +34,8 @@ func eventsPageURL(page int) string {
 	return fmt.Sprintf("%s/page-%d/", calendarURL, page)
 }
 
-func scrapPage(page int) (error, []Event) {
-	events := make([]Event, 0)
+func scrapPage(page int) (error, []DouEvent) {
+	events := make([]DouEvent, 0)
 
 	res, err := http.Get(eventsPageURL(page))
 	if err != nil {
@@ -67,8 +67,8 @@ func scrapPage(page int) (error, []Event) {
 	return nil, events
 }
 
-func parseEvent(selection *goquery.Selection) Event {
-	var event Event
+func parseEvent(selection *goquery.Selection) DouEvent {
+	var event DouEvent
 
 	title := selection.Find(titleSelector).Text()
 	event.Title = strings.TrimSpace(title)
@@ -106,8 +106,8 @@ func parseEvent(selection *goquery.Selection) Event {
 	return event
 }
 
-func ScrapCalendarEvents() (error, []Event) {
-	var events []Event
+func ScrapCalendarEvents() (error, []DouEvent) {
+	var events []DouEvent
 
 	for page := 0; ; page++ {
 		err, parsedEventsFromPage := scrapPage(page)
