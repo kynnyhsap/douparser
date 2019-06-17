@@ -1,10 +1,10 @@
-package parser
+package dou_parser
 
 import (
-	"dou-parser/dates"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	. "github.com/tobira-shoe/event-models"
+	"github.com/tobira-show/dou-events-parser/dates"
 	"net/http"
 	"strconv"
 	"strings"

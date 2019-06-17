@@ -1,4 +1,4 @@
-module dou-parser
+module github.com/tobira-show/dou-events-parser
 
 require (
 	github.com/PuerkitoBio/goquery v1.5.0
