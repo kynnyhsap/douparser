@@ -2,6 +2,5 @@ module github.com/tobira-shoe/dou-events-parser
 
 require (
 	github.com/PuerkitoBio/goquery v1.5.0
-	github.com/labstack/echo/v4 v4.1.6
-	github.com/tobira-shoe/event-models v0.1.0
+	golang.org/x/net v0.0.0-20190607181551-461777fb6f67 // indirect
 )
