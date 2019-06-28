@@ -34,28 +34,28 @@ func eventsPageURL(page int) string {
 	return fmt.Sprintf("%s/page-%d/", calendarURL, page)
 }
 
-func scrapPage(page int) (error, []DouEvent) {
+func scrapPage(page int) ([]DouEvent, error) {
 	events := make([]DouEvent, 0)
 
 	res, err := http.Get(eventsPageURL(page))
 	if err != nil {
-		return err, events
+		return events, err
 	}
 
 	if res.StatusCode == 404 {
-		return fmt.Errorf("404"), events
+		return events, fmt.Errorf("404")
 	} else if res.StatusCode != 200 {
-		return fmt.Errorf("unhandled response status code: %d %s", res.StatusCode, res.Status), events
+		return events, fmt.Errorf("unhandled response status code: %d %s", res.StatusCode, res.Status)
 	}
 
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
-		return err, events
+		return events, err
 	}
 
 	err = res.Body.Close()
 	if err != nil {
-		return err, events
+		return events, err
 	}
 
 	doc.Find(eventsListSelector).Each(func(i int, selection *goquery.Selection) {
@@ -64,7 +64,7 @@ func scrapPage(page int) (error, []DouEvent) {
 		events = append(events, event)
 	})
 
-	return nil, events
+	return events, nil
 }
 
 func parseEvent(selection *goquery.Selection) DouEvent {
@@ -106,11 +106,11 @@ func parseEvent(selection *goquery.Selection) DouEvent {
 	return event
 }
 
-func ParseCalendarEvents() (error, []DouEvent) {
+func ParseCalendarEvents() ([]DouEvent, error) {
 	var events []DouEvent
 
 	for page := 0; ; page++ {
-		err, parsedEventsFromPage := scrapPage(page)
+		parsedEventsFromPage, err := scrapPage(page)
 
 		events = append(events, parsedEventsFromPage...)
 
@@ -118,30 +118,30 @@ func ParseCalendarEvents() (error, []DouEvent) {
 			if err.Error() == "404" {
 				break
 			} else {
-				return err, events
+				return events, err
 			}
 		}
 	}
 
-	return nil, events
+	return events, nil
 }
 
-func ParseEventTags() (error, []string) {
+func ParseEventTags() ([]string, error) {
 	tags := make([]string, 0)
 
 	res, err := http.Get(archiveURL)
 	if err != nil {
-		return err, tags
+		return tags, err
 	}
 
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
-		return err, tags
+		return tags, err
 	}
 
 	err = res.Body.Close()
 	if err != nil {
-		return err, tags
+		return tags, err
 	}
 
 	doc.Find(allTagsSelector).Each(func(i int, s *goquery.Selection) {
@@ -149,5 +149,5 @@ func ParseEventTags() (error, []string) {
 		tags = append(tags, tag)
 	})
 
-	return nil, tags
+	return tags, nil
 }
