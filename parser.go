@@ -3,15 +3,17 @@ package douparser
 import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
-	"github.com/tobira-shoe/dou-events-parser/dates"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
 const (
-	calendarURL         = "https://dou.ua/calendar"
-	archiveURL          = "https://dou.ua/calendar/archive"
+	calendarURL = "https://dou.ua/calendar"
+	archiveURL  = "https://dou.ua/calendar/archive"
+
+	// css selectors
+	allTagsSelector     = "body > div > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > div.page-head > h1 > select:nth-child(3) > option"
 	eventsListSelector  = "body > div.g-page > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > article"
 	titleSelector       = "h2.title"
 	linkSelector        = "h2.title a"
@@ -21,8 +23,6 @@ const (
 	costSelector        = "div.when-and-where span"
 	locationSelector    = "div.when-and-where"
 	tagsSelector        = "div.more a"
-
-	allTagsSelector = "body > div > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > div.page-head > h1 > select:nth-child(3) > option"
 )
 
 func singleEventURL(id int) string {
@@ -75,7 +75,9 @@ func parseEvent(selection *goquery.Selection) DouEvent {
 	event.Image, _ = selection.Find(imageSelector).Attr("src")
 
 	link, _ := selection.Find(linkSelector).Attr("href")
+
 	event.ID, _ = strconv.Atoi(strings.Split(link, "/")[4])
+
 	description := selection.Find(descriptionSelector).Text()
 
 	event.ShortDescription = strings.TrimSpace(description)
@@ -83,9 +85,7 @@ func parseEvent(selection *goquery.Selection) DouEvent {
 	date := selection.Find(dateSelector).Text()
 	selection.Find(dateSelector).Remove()
 	event.RawDate = strings.TrimSpace(date)
-	parsedDates := dates.Parse(event.RawDate)
-	event.Start = parsedDates[0]
-	event.End = parsedDates[1]
+	event.Start, event.End = parseRawDate(event.RawDate)
 
 	cost := selection.Find(costSelector).Text()
 	event.Cost = strings.TrimSpace(cost)
