@@ -62,21 +62,21 @@ func parseEvent(s *goquery.Selection) DouEvent {
 		d := strings.TrimSpace(row.Find(".dd").Text())
 
 		switch t {
-		case "Відбудеться":
+		case "Відбудеться", "Date":
 			event.RawDate = d
 			event.Start, event.End = parseRawDate(d)
-		case "Початок": // parse time
-			break
-		case "Місце":
+		case "Початок", "Time":
+			event.RawTime = d
+			// parse time
+		case "Місце", "Place":
 			if d == "Online" {
 				event.Online = true
 				break
 			}
 			event.Location = d
-		case "Вартість":
+		case "Вартість", "Price":
 			event.Cost = d
 		}
-		//...
 	})
 
 	s.Find(".b-post-tags a").Each(func(i int, tagLink *goquery.Selection) {
@@ -121,7 +121,7 @@ func scrapCalendarPage(page int) ([]DouEvent, error) {
 		}
 
 		event.ID = id
-		event.ShortDescription = selection.Find("p.b-typo").Text()
+		event.ShortDescription = strings.TrimSpace(selection.Find("p.b-typo").Text())
 
 		events = append(events, event)
 	})
