@@ -3,6 +3,7 @@ package douparser
 import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/k3a/html2text"
 	"net/http"
 	"strconv"
 	"strings"
@@ -13,37 +14,90 @@ const (
 	archiveURL  = "https://dou.ua/calendar/archive"
 
 	// css selectors
-	allTagsSelector     = "body > div > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > div.page-head > h1 > select:nth-child(3) > option"
-	eventsListSelector  = "body > div.g-page > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > article"
-	titleSelector       = "h2.title"
-	linkSelector        = "h2.title a"
-	imageSelector       = "h2.title a img.logo"
-	descriptionSelector = "p.b-typo"
-	dateSelector        = "div.when-and-where span.date"
-	costSelector        = "div.when-and-where span"
-	locationSelector    = "div.when-and-where"
-	tagsSelector        = "div.more a"
+	allTagsSelector    = "body > div > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > div.page-head > h1 > select:nth-child(3) > option"
+	eventsListSelector = "body > div.g-page > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > article"
 )
 
-func singleEventURL(id int) string {
+func eventPageURL(id int) string {
 	return calendarURL + "/" + strconv.Itoa(id)
 }
 
-func eventsPageURL(page int) string {
+func calendarPageURL(page int) string {
 	return fmt.Sprintf("%s/page-%d/", calendarURL, page)
 }
 
-func scrapPage(page int) ([]DouEvent, error) {
+func scrapEvent(eventID int) (DouEvent, error) {
+	res, err := http.Get(eventPageURL(eventID))
+	if err != nil {
+		return DouEvent{}, err
+	}
+
+	if res.StatusCode != 200 {
+		return DouEvent{}, fmt.Errorf("unhandled response status code: %d %s", res.StatusCode, res.Status)
+	}
+
+	doc, err := goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		return DouEvent{}, err
+	}
+
+	s := doc.Find(".cell .g-right-shadowed .mobtab-maincol")
+
+	return parseEvent(s), nil
+}
+
+func parseEvent(s *goquery.Selection) DouEvent {
+	var event DouEvent
+
+	event.Title = s.Find(".page-head h1").Text()
+	event.Image, _ = s.Find(".event-info img.event-info-logo").Attr("src")
+
+	htmlDescription, err := s.Find("article.b-typo").Html()
+	if err == nil {
+		event.FullDescription = html2text.HTML2Text(htmlDescription)
+	}
+
+	s.Find(".event-info .event-info-row").Each(func(i int, row *goquery.Selection) {
+		t := row.Find(".dt").Text()
+		d := row.Find(".dd").Text()
+
+		switch t {
+		case "Відбудеться":
+			event.RawDate = d
+			event.Start, event.End = parseRawDate(d)
+		case "Початок": // parse time
+			break
+		case "Місце":
+			if d == "Online" {
+				event.Online = true
+				break
+			}
+			event.Location = d
+		case "Вартість":
+			event.Cost = d
+		}
+		//...
+	})
+
+	s.Find(".b-post-tags a").Each(func(i int, tagLink *goquery.Selection) {
+		event.Tags = append(event.Tags, tagLink.Text())
+	})
+
+	return event
+}
+
+func scrapCalendarPage(page int) ([]DouEvent, error) {
 	events := make([]DouEvent, 0)
 
-	res, err := http.Get(eventsPageURL(page))
+	res, err := http.Get(calendarPageURL(page))
 	if err != nil {
 		return events, err
 	}
 
 	if res.StatusCode == 404 {
 		return events, fmt.Errorf("404")
-	} else if res.StatusCode != 200 {
+	}
+	if res.StatusCode != 200 {
 		return events, fmt.Errorf("unhandled response status code: %d %s", res.StatusCode, res.Status)
 	}
 
@@ -58,74 +112,44 @@ func scrapPage(page int) ([]DouEvent, error) {
 	}
 
 	doc.Find(eventsListSelector).Each(func(i int, selection *goquery.Selection) {
-		event := parseEvent(selection)
-		// scrap single event (image url, full description, address)
+		link, _ := selection.Find("h2.title a").Attr("href")
+		id, _ := strconv.Atoi(strings.Split(link, "/")[4])
+
+		event, err := scrapEvent(id)
+		if err != nil {
+			return
+		}
+
+		event.ID = id
+		event.ShortDescription = selection.Find("p.b-typo").Text()
+
 		events = append(events, event)
 	})
 
 	return events, nil
 }
 
-func parseEvent(selection *goquery.Selection) DouEvent {
-	var event DouEvent
-
-	title := selection.Find(titleSelector).Text()
-	event.Title = strings.TrimSpace(title)
-
-	event.Image, _ = selection.Find(imageSelector).Attr("src")
-
-	link, _ := selection.Find(linkSelector).Attr("href")
-
-	event.ID, _ = strconv.Atoi(strings.Split(link, "/")[4])
-
-	description := selection.Find(descriptionSelector).Text()
-
-	event.ShortDescription = strings.TrimSpace(description)
-
-	date := selection.Find(dateSelector).Text()
-	selection.Find(dateSelector).Remove()
-	event.RawDate = strings.TrimSpace(date)
-	event.Start, event.End = parseRawDate(event.RawDate)
-
-	cost := selection.Find(costSelector).Text()
-	event.Cost = strings.TrimSpace(cost)
-	selection.Find(costSelector).Remove()
-
-	location := selection.Find(locationSelector).Text()
-	event.Location = strings.TrimSpace(location)
-	if event.Location == "Online" {
-		event.Online = true
-	}
-
-	selection.Find(tagsSelector).Each(func(i int, tagSelection *goquery.Selection) {
-		tag := tagSelection.Text()
-		event.Tags = append(event.Tags, strings.TrimSpace(tag))
-	})
-
-	return event
-}
-
-func ParseCalendarEvents() ([]DouEvent, error) {
+func ScrapCalendarEvents() ([]DouEvent, error) {
 	var events []DouEvent
 
 	for page := 0; ; page++ {
-		parsedEventsFromPage, err := scrapPage(page)
+		scrappedEvents, err := scrapCalendarPage(page)
 
-		events = append(events, parsedEventsFromPage...)
+		events = append(events, scrappedEvents...)
 
 		if err != nil {
 			if err.Error() == "404" {
 				break
-			} else {
-				return events, err
 			}
+
+			return events, err
 		}
 	}
 
 	return events, nil
 }
 
-func ParseEventTags() ([]string, error) {
+func ScrapEventTags() ([]string, error) {
 	tags := make([]string, 0)
 
 	res, err := http.Get(archiveURL)

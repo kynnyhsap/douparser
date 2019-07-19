@@ -9,6 +9,7 @@ type DouEvent struct {
 	Start            time.Time `json:"start"`
 	End              time.Time `json:"end"`
 	RawDate          string    `json:"raw_date"`
+	RawTime          string    `json:"raw_time"`
 	Title            string    `json:"title"`
 	ShortDescription string    `json:"short_description"`
 	FullDescription  string    `json:"full_description"`
