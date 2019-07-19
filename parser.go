@@ -14,8 +14,9 @@ const (
 	archiveURL  = "https://dou.ua/calendar/archive"
 
 	// css selectors
-	allTagsSelector    = "body > div > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > div.page-head > h1 > select:nth-child(3) > option"
-	eventsListSelector = "body > div.g-page > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > article"
+	tagsSelector           = "body > div > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > div.page-head > h1 > select:nth-child(3) > option"
+	eventCardsListSelector = "body > div.g-page > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > article"
+	eventCellSelector      = "body > div > div.l-content.m-content > div.l-content-wrap > div.cell.g-right-shadowed.mobtab-maincol"
 )
 
 func eventPageURL(id int) string {
@@ -41,15 +42,16 @@ func scrapEvent(eventID int) (DouEvent, error) {
 		return DouEvent{}, err
 	}
 
-	s := doc.Find("body > div > div.l-content.m-content > div.l-content-wrap > div.cell.g-right-shadowed.mobtab-maincol")
+	event := parseEvent(doc.Find(eventCellSelector))
 
-	return parseEvent(s), nil
+	return event, nil
 }
 
 func parseEvent(s *goquery.Selection) DouEvent {
 	var event DouEvent
 
 	event.Title = strings.TrimSpace(s.Find(".page-head h1").Text())
+
 	event.Image, _ = s.Find(".event-info img.event-info-logo").Attr("src")
 
 	htmlDescription, err := s.Find("article.b-typo").Html()
@@ -57,24 +59,23 @@ func parseEvent(s *goquery.Selection) DouEvent {
 		event.FullDescription = strings.TrimSpace(html2text.HTML2Text(htmlDescription))
 	}
 
-	s.Find(".event-info .event-info-row").Each(func(i int, row *goquery.Selection) {
-		t := strings.TrimSpace(row.Find(".dt").Text())
-		d := strings.TrimSpace(row.Find(".dd").Text())
+	s.Find(".event-info .event-info-row").Each(func(i int, infoRow *goquery.Selection) {
+		infoType := strings.TrimSpace(infoRow.Find(".dt").Text())
+		d := strings.TrimSpace(infoRow.Find(".dd").Text())
 
-		switch t {
-		case "Відбудеться", "Date":
+		switch infoType {
+		case "Відбудеться", "Пройдет", "Date":
 			event.RawDate = d
 			event.Start, event.End = parseRawDate(d)
-		case "Початок", "Time":
-			event.RawTime = d
-			// parse time
-		case "Місце", "Place":
+		case "Початок", "Начало", "Time":
+			event.RawTime = d // parse time ?
+		case "Місце", "Место", "Place":
 			if d == "Online" {
 				event.Online = true
 				break
 			}
 			event.Location = d
-		case "Вартість", "Price":
+		case "Вартість", "Стоимость", "Price":
 			event.Cost = d
 		}
 	})
@@ -111,7 +112,7 @@ func scrapCalendarPage(page int) ([]DouEvent, error) {
 		return events, err
 	}
 
-	doc.Find(eventsListSelector).Each(func(i int, selection *goquery.Selection) {
+	doc.Find(eventCardsListSelector).Each(func(i int, selection *goquery.Selection) {
 		link, _ := selection.Find("h2.title a").Attr("href")
 		id, _ := strconv.Atoi(strings.Split(link, "/")[4])
 
@@ -167,7 +168,7 @@ func ScrapEventTags() ([]string, error) {
 		return tags, err
 	}
 
-	doc.Find(allTagsSelector).Each(func(i int, s *goquery.Selection) {
+	doc.Find(tagsSelector).Each(func(i int, s *goquery.Selection) {
 		tag := strings.TrimSpace(s.Text())
 		tags = append(tags, tag)
 	})
