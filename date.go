@@ -37,18 +37,18 @@ var months = map[string]time.Month{
 	"ноября":   time.November,
 	"декабря":  time.December,
 	// Ukrainian months
-	"січень":   time.January,
-	"лютий":    time.February,
-	"березень": time.March,
-	"квітень":  time.April,
-	"травень":  time.May,
-	"червень":  time.June,
-	"липень":   time.July,
-	"серпень":  time.August,
-	"вересень": time.September,
-	"жовтень":  time.October,
-	"листопад": time.November,
-	"грудень":  time.December,
+	"січня":     time.January,
+	"лютого":    time.February,
+	"березня":   time.March,
+	"квітня":    time.April,
+	"травня":    time.May,
+	"червня":    time.June,
+	"липня":     time.July,
+	"серпня":    time.August,
+	"вересня":   time.September,
+	"жовтня":    time.October,
+	"листопада": time.November,
+	"грудня":    time.December,
 }
 
 type douDate struct {
@@ -75,6 +75,10 @@ func (dd douDate) yearDefined() bool {
 
 func (dd douDate) dayDefined() bool {
 	return dd.day > 0
+}
+
+func (dd douDate) defined() bool {
+	return dd.yearDefined() && dd.monthDefined() && dd.dayDefined()
 }
 
 func newDouDateFromString(s string) douDate {
@@ -111,7 +115,7 @@ func defineYearByMonth(month time.Month) int {
 	return now.Year()
 }
 
-func parseRawDate(rawDate string) (time.Time, time.Time) {
+func parseRawDate(rawDate string) (douDate, douDate) {
 	var start douDate
 	var end douDate
 
@@ -143,5 +147,5 @@ func parseRawDate(rawDate string) (time.Time, time.Time) {
 		}
 	}
 
-	return start.toTimeDate(), end.toTimeDate()
+	return start, end
 }

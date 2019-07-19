@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -47,6 +48,20 @@ func scrapEvent(eventID int) (DouEvent, error) {
 	return event, nil
 }
 
+func combineDouTimeAndDate(startTime, endTime douTime, startDate, endDate douDate) (time.Time, time.Time) {
+	start := time.Date(startDate.year, startDate.month, startDate.day, startTime.hours, startTime.minutes, 0, 0, locale)
+
+	if endTime.defined() {
+		if !endDate.defined() {
+			end := time.Date(startDate.year, startDate.month, startDate.day, endTime.hours, endTime.minutes, 0, 0, locale)
+
+			return start, end
+		}
+	}
+
+	return start, time.Time{}
+}
+
 func parseEvent(s *goquery.Selection) DouEvent {
 	var event DouEvent
 
@@ -59,6 +74,9 @@ func parseEvent(s *goquery.Selection) DouEvent {
 		event.FullDescription = strings.TrimSpace(html2text.HTML2Text(htmlDescription))
 	}
 
+	var startTime, endTime douTime
+	var startDate, endDate douDate
+
 	s.Find(".event-info .event-info-row").Each(func(i int, infoRow *goquery.Selection) {
 		infoType := strings.TrimSpace(infoRow.Find(".dt").Text())
 		d := strings.TrimSpace(infoRow.Find(".dd").Text())
@@ -66,9 +84,10 @@ func parseEvent(s *goquery.Selection) DouEvent {
 		switch infoType {
 		case "Відбудеться", "Пройдет", "Date":
 			event.RawDate = d
-			event.Start, event.End = parseRawDate(d)
+			startDate, endDate = parseRawDate(d)
 		case "Початок", "Начало", "Time":
-			event.RawTime = d // parse time ?
+			event.RawTime = d
+			startTime, endTime = parseRawTime(d)
 		case "Місце", "Место", "Place":
 			if d == "Online" {
 				event.Online = true
@@ -79,6 +98,8 @@ func parseEvent(s *goquery.Selection) DouEvent {
 			event.Cost = d
 		}
 	})
+
+	event.Start, event.End = combineDouTimeAndDate(startTime, endTime, startDate, endDate)
 
 	s.Find(".b-post-tags a").Each(func(i int, tagLink *goquery.Selection) {
 		event.Tags = append(event.Tags, tagLink.Text())
