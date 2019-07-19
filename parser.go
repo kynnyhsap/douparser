@@ -41,7 +41,7 @@ func scrapEvent(eventID int) (DouEvent, error) {
 		return DouEvent{}, err
 	}
 
-	s := doc.Find(".cell .g-right-shadowed .mobtab-maincol")
+	s := doc.Find("body > div > div.l-content.m-content > div.l-content-wrap > div.cell.g-right-shadowed.mobtab-maincol")
 
 	return parseEvent(s), nil
 }
@@ -49,17 +49,17 @@ func scrapEvent(eventID int) (DouEvent, error) {
 func parseEvent(s *goquery.Selection) DouEvent {
 	var event DouEvent
 
-	event.Title = s.Find(".page-head h1").Text()
+	event.Title = strings.TrimSpace(s.Find(".page-head h1").Text())
 	event.Image, _ = s.Find(".event-info img.event-info-logo").Attr("src")
 
 	htmlDescription, err := s.Find("article.b-typo").Html()
 	if err == nil {
-		event.FullDescription = html2text.HTML2Text(htmlDescription)
+		event.FullDescription = strings.TrimSpace(html2text.HTML2Text(htmlDescription))
 	}
 
 	s.Find(".event-info .event-info-row").Each(func(i int, row *goquery.Selection) {
-		t := row.Find(".dt").Text()
-		d := row.Find(".dd").Text()
+		t := strings.TrimSpace(row.Find(".dt").Text())
+		d := strings.TrimSpace(row.Find(".dd").Text())
 
 		switch t {
 		case "Відбудеться":
