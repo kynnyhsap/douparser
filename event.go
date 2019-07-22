@@ -2,7 +2,7 @@ package douparser
 
 import "time"
 
-type DouEvent struct {
+type Event struct {
 	ID               int       `json:"id"`
 	Online           bool      `json:"online"`
 	Tags             []string  `json:"tags"`
