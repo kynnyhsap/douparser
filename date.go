@@ -1,6 +1,7 @@
 package douparser
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -79,6 +80,10 @@ func (dd douDate) dayDefined() bool {
 
 func (dd douDate) defined() bool {
 	return dd.yearDefined() && dd.monthDefined() && dd.dayDefined()
+}
+
+func (dd douDate) String() string {
+	return fmt.Sprintf("%d-%d-%d", dd.year, dd.month, dd.day)
 }
 
 func newDouDateFromString(s string) douDate {
