@@ -28,19 +28,19 @@ func calendarPageURL(page int) string {
 	return fmt.Sprintf("%s/page-%d/", calendarURL, page)
 }
 
-func scrapEvent(eventID int) (DouEvent, error) {
+func scrapEvent(eventID int) (Event, error) {
 	res, err := http.Get(eventPageURL(eventID))
 	if err != nil {
-		return DouEvent{}, err
+		return Event{}, err
 	}
 
 	if res.StatusCode != 200 {
-		return DouEvent{}, fmt.Errorf("unhandled response status code: %d %s", res.StatusCode, res.Status)
+		return Event{}, fmt.Errorf("unhandled response status code: %d %s", res.StatusCode, res.Status)
 	}
 
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
-		return DouEvent{}, err
+		return Event{}, err
 	}
 
 	event := parseEvent(doc.Find(eventCellSelector))
@@ -48,22 +48,30 @@ func scrapEvent(eventID int) (DouEvent, error) {
 	return event, nil
 }
 
-func combineDouTimeAndDate(startTime, endTime douTime, startDate, endDate douDate) (time.Time, time.Time) {
-	start := time.Date(startDate.year, startDate.month, startDate.day, startTime.hours, startTime.minutes, 0, 0, locale)
+func newDateFromDouDateAndTime(d douDate, t douTime) time.Time {
+	return time.Date(d.year, d.month, d.day, t.hours, t.minutes, 0, 0, locale)
+}
 
-	if endTime.defined() {
-		if !endDate.defined() {
-			end := time.Date(startDate.year, startDate.month, startDate.day, endTime.hours, endTime.minutes, 0, 0, locale)
+func combineDouTimeAndDate(sTime, eTime douTime, sDate, eDate douDate) (time.Time, time.Time) {
+	if !sDate.defined() {
+		return time.Time{}, time.Time{}
+	}
 
-			return start, end
-		}
+	start := newDateFromDouDateAndTime(sDate, sTime)
+
+	if eDate.defined() {
+		return start, newDateFromDouDateAndTime(eDate, sTime)
+	}
+
+	if eTime.defined() {
+		return start, newDateFromDouDateAndTime(sDate, eTime)
 	}
 
 	return start, time.Time{}
 }
 
-func parseEvent(s *goquery.Selection) DouEvent {
-	var event DouEvent
+func parseEvent(s *goquery.Selection) Event {
+	var event Event
 
 	event.Title = strings.TrimSpace(s.Find(".page-head h1").Text())
 
@@ -108,8 +116,8 @@ func parseEvent(s *goquery.Selection) DouEvent {
 	return event
 }
 
-func scrapCalendarPage(page int) ([]DouEvent, error) {
-	events := make([]DouEvent, 0)
+func scrapCalendarPage(page int) ([]Event, error) {
+	events := make([]Event, 0)
 
 	res, err := http.Get(calendarPageURL(page))
 	if err != nil {
@@ -151,8 +159,8 @@ func scrapCalendarPage(page int) ([]DouEvent, error) {
 	return events, nil
 }
 
-func ScrapCalendarEvents() ([]DouEvent, error) {
-	var events []DouEvent
+func CalendarEvents() ([]Event, error) {
+	var events []Event
 
 	for page := 0; ; page++ {
 		scrappedEvents, err := scrapCalendarPage(page)
@@ -171,7 +179,7 @@ func ScrapCalendarEvents() ([]DouEvent, error) {
 	return events, nil
 }
 
-func ScrapEventTags() ([]string, error) {
+func Tags() ([]string, error) {
 	tags := make([]string, 0)
 
 	res, err := http.Get(archiveURL)
