@@ -1,6 +1,7 @@
 package douparser
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 )
@@ -12,6 +13,10 @@ type douTime struct {
 
 func (dt douTime) defined() bool {
 	return dt.hours > 0 && dt.minutes > 0
+}
+
+func (dt douTime) String() string {
+	return fmt.Sprintf("%d:%d", dt.hours, dt.minutes)
 }
 
 func timeFromStrings(hours, minutes string) douTime {
