@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 )
 
 const (
@@ -48,28 +47,6 @@ func scrapEvent(eventID int) (Event, error) {
 	return event, nil
 }
 
-func newDateFromDouDateAndTime(d douDate, t douTime) time.Time {
-	return time.Date(d.year, d.month, d.day, t.hours, t.minutes, 0, 0, locale)
-}
-
-func combineDouTimeAndDate(sTime, eTime douTime, sDate, eDate douDate) (time.Time, time.Time) {
-	if !sDate.defined() {
-		return time.Time{}, time.Time{}
-	}
-
-	start := newDateFromDouDateAndTime(sDate, sTime)
-
-	if eDate.defined() {
-		return start, newDateFromDouDateAndTime(eDate, sTime)
-	}
-
-	if eTime.defined() {
-		return start, newDateFromDouDateAndTime(sDate, eTime)
-	}
-
-	return start, time.Time{}
-}
-
 func parseEvent(s *goquery.Selection) Event {
 	var event Event
 
@@ -82,9 +59,6 @@ func parseEvent(s *goquery.Selection) Event {
 		event.FullDescription = strings.TrimSpace(html2text.HTML2Text(htmlDescription))
 	}
 
-	var startTime, endTime douTime
-	var startDate, endDate douDate
-
 	s.Find(".event-info .event-info-row").Each(func(i int, infoRow *goquery.Selection) {
 		infoType := strings.TrimSpace(infoRow.Find(".dt").Text())
 		d := strings.TrimSpace(infoRow.Find(".dd").Text())
@@ -92,10 +66,8 @@ func parseEvent(s *goquery.Selection) Event {
 		switch infoType {
 		case "Відбудеться", "Пройдет", "Date":
 			event.RawDate = d
-			startDate, endDate = parseRawDate(d)
 		case "Початок", "Начало", "Time":
 			event.RawTime = d
-			startTime, endTime = parseRawTime(d)
 		case "Місце", "Место", "Place":
 			if d == "Online" {
 				event.Online = true
@@ -107,7 +79,7 @@ func parseEvent(s *goquery.Selection) Event {
 		}
 	})
 
-	event.Start, event.End = combineDouTimeAndDate(startTime, endTime, startDate, endDate)
+	event.Start, event.End = parseEventTime(event.RawDate, event.RawTime)
 
 	s.Find(".b-post-tags a").Each(func(i int, tagLink *goquery.Selection) {
 		event.Tags = append(event.Tags, tagLink.Text())

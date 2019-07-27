@@ -103,21 +103,38 @@ func (ddt douDateTime) toStdTime() time.Time {
 }
 
 func (ddt *douDateTime) parseTimeString(time string) {
-	var re = regexp.MustCompile(`(?:\D*)(\d{2}):(\d{2})(?:\D*)`)
-	match := re.FindStringSubmatch(time)
-
-	if match[1] == "" || match[2] == "" {
+	if time == "" {
 		return
 	}
 
-	ddt.hours, _ = strconv.Atoi(match[1])
-	ddt.minutes, _ = strconv.Atoi(match[2])
+	var re = regexp.MustCompile(`(?:\D*)(\d{2}):(\d{2})(?:\D*)`)
+	match := re.FindStringSubmatch(time)
+
+	if match == nil {
+		return
+	}
+
+	if match[1] != "" {
+		ddt.hours, _ = strconv.Atoi(match[1])
+	}
+
+	if match[2] != "" {
+		ddt.minutes, _ = strconv.Atoi(match[2])
+	}
 }
 
 func (ddt *douDateTime) parseDateString(date string) {
+	if date == "" {
+		return
+	}
+
 	var re = regexp.MustCompile(`(?:\s*)(\d{1,2})(?:(?:\s+)([а-яА-яa-zA-Z]+))?(?:(?:\s+)(?:(\d{4})|(?:\(.+\))))?`) // TODO: extract to global scope
 
 	match := re.FindStringSubmatch(date)
+
+	if match == nil {
+		return
+	}
 
 	ddt.day, _ = strconv.Atoi(match[1])
 
@@ -128,6 +145,10 @@ func (ddt *douDateTime) parseDateString(date string) {
 	if match[3] != "" {
 		ddt.year, _ = strconv.Atoi(match[3])
 	}
+}
+
+func (ddt douDateTime) String() string {
+	return ddt.toStdTime().String()
 }
 
 func parseRawDates(raw string, start, end *douDateTime) {
@@ -160,7 +181,7 @@ func parseRawDates(raw string, start, end *douDateTime) {
 	}
 }
 
-func parseRawTime(raw string, start, end *douDateTime) {
+func parseRawClockTimes(raw string, start, end *douDateTime) {
 	if raw == "" {
 		return
 	}
@@ -197,11 +218,11 @@ func resolveTimes(start, end *douDateTime) {
 	}
 }
 
-func getEventTime(rawDates, rawTimes string) (time.Time, time.Time) {
+func parseEventTime(rawDates, rawTimes string) (time.Time, time.Time) {
 	var start, end douDateTime
 
 	parseRawDates(rawDates, &start, &end)
-	parseRawTime(rawTimes, &start, &end)
+	parseRawClockTimes(rawTimes, &start, &end)
 	resolveTimes(&start, &end)
 
 	return start.toStdTime(), end.toStdTime()
