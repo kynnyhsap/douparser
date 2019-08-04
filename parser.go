@@ -4,14 +4,16 @@ import (
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/k3a/html2text"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
 )
 
 const (
-	calendarURL = "https://dou.ua/calendar"
-	archiveURL  = "https://dou.ua/calendar/archive"
+	eventsPerPage = 20
+	calendarURL   = "https://dou.ua/calendar"
+	archiveURL    = "https://dou.ua/calendar/archive"
 
 	// css selectors
 	tagsSelector           = "body > div > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > div.page-head > h1 > select:nth-child(3) > option"
@@ -19,36 +21,46 @@ const (
 	eventCellSelector      = "body > div > div.l-content.m-content > div.l-content-wrap > div.cell.g-right-shadowed.mobtab-maincol"
 )
 
-func eventPageURL(id int) string {
-	return calendarURL + "/" + strconv.Itoa(id)
+var selectors = map[string]string{
+	"tags":      "body > div > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > div.page-head > h1 > select:nth-child(3) > option",
+	"eventCard": "body > div.g-page > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > article",
+	"eventFull": "body > div > div.l-content.m-content > div.l-content-wrap > div.cell.g-right-shadowed.mobtab-maincol",
 }
 
-func calendarPageURL(page int) string {
-	return fmt.Sprintf("%s/page-%d/", calendarURL, page)
-}
-
-func scrapEvent(eventID int) (Event, error) {
-	res, err := http.Get(eventPageURL(eventID))
+func fetchEventDocument(eventID int) (*goquery.Document, error) {
+	res, err := http.Get(fmt.Sprintf("%s/%d", calendarURL, eventID))
 	if err != nil {
-		return Event{}, err
+		return nil, err
 	}
 
 	if res.StatusCode != 200 {
-		return Event{}, fmt.Errorf("unhandled response status code: %d %s", res.StatusCode, res.Status)
+		return nil, fmt.Errorf("unhandled response status code: %d %s", res.StatusCode, res.Status)
 	}
 
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
+		return doc, err
+	}
+
+	return doc, nil
+}
+
+func scrapEvent(eventID int) (Event, error) {
+	doc, err := fetchEventDocument(eventID)
+	if err != nil {
 		return Event{}, err
 	}
 
-	event := parseEvent(doc.Find(eventCellSelector))
+	event := parseEvent(doc)
+	event.ID = eventID
 
 	return event, nil
 }
 
-func parseEvent(s *goquery.Selection) Event {
+func parseEvent(eventDocument *goquery.Document) Event {
 	var event Event
+
+	s := eventDocument.Find(eventCellSelector)
 
 	event.Title = strings.TrimSpace(s.Find(".page-head h1").Text())
 
@@ -88,32 +100,66 @@ func parseEvent(s *goquery.Selection) Event {
 	return event
 }
 
-func scrapCalendarPage(page int) ([]Event, error) {
-	events := make([]Event, 0)
+func totalPages() (int, error) {
+	const selector = "body > div > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > div.b-paging > span:nth-last-child(2) > a"
 
-	res, err := http.Get(calendarPageURL(page))
+	res, err := http.Get(calendarURL)
 	if err != nil {
-		return events, err
+		return 0, err
 	}
 
-	if res.StatusCode == 404 {
-		return events, fmt.Errorf("404")
-	}
 	if res.StatusCode != 200 {
-		return events, fmt.Errorf("unhandled response status code: %d %s", res.StatusCode, res.Status)
+		return 0, fmt.Errorf("unhandled response status code: %d %s", res.StatusCode, res.Status)
 	}
 
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
-		return events, err
+		return 0, err
 	}
 
 	err = res.Body.Close()
 	if err != nil {
-		return events, err
+		return 0, err
 	}
 
-	doc.Find(eventCardsListSelector).Each(func(i int, selection *goquery.Selection) {
+	total, err := strconv.Atoi(doc.Find(selector).Text())
+	if err != nil {
+		return 0, err
+	}
+
+	return total, err
+}
+
+func fetchPageDocument(page int) (*goquery.Document, error) {
+	res, err := http.Get(fmt.Sprintf("%s/page-%d/", calendarURL, page))
+	if err != nil {
+		return nil, err
+	}
+
+	if res.StatusCode == 404 {
+		return nil, fmt.Errorf("404")
+	}
+	if res.StatusCode != 200 {
+		return nil, fmt.Errorf("unhandled response status code: %d %s", res.StatusCode, res.Status)
+	}
+
+	doc, err := goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	err = res.Body.Close()
+	if err != nil {
+		return doc, err
+	}
+
+	return doc, err
+}
+
+func parsePageEvents(pageDocument *goquery.Document) []Event {
+	events := make([]Event, 0, eventsPerPage)
+
+	pageDocument.Find("body > div.g-page > div.l-content.m-content > div > div.col70.m-cola > div > div > div.col50.m-cola > article").Each(func(i int, selection *goquery.Selection) {
 		link, _ := selection.Find("h2.title a").Attr("href")
 		id, _ := strconv.Atoi(strings.Split(link, "/")[4])
 
@@ -122,33 +168,40 @@ func scrapCalendarPage(page int) ([]Event, error) {
 			return
 		}
 
-		event.ID = id
 		event.ShortDescription = strings.TrimSpace(selection.Find("p.b-typo").Text())
 
 		events = append(events, event)
 	})
 
-	return events, nil
+	return events
 }
 
-func CalendarEvents() ([]Event, error) {
-	var events []Event
+func Events() []Event {
+	total, _ := totalPages()
+	events := make([]Event, 0, total*eventsPerPage)
 
-	for page := 0; ; page++ {
-		scrappedEvents, err := scrapCalendarPage(page)
+	//var wg sync.WaitGroup
 
-		events = append(events, scrappedEvents...)
-
+	for i := 0; i < total; i++ {
+		//wg.Add(1)
+		//go func() {
+		//	defer wg.Done()
+		//
+		//}()
+		doc, err := fetchPageDocument(i)
 		if err != nil {
-			if err.Error() == "404" {
-				break
-			}
-
-			return events, err
+			log.Print(err)
 		}
+
+		parsed := parsePageEvents(doc)
+		events = append(events, parsed...)
+
+		//<-time.After(200 * time.Millisecond)
 	}
 
-	return events, nil
+	//wg.Wait()
+
+	return events
 }
 
 func Tags() ([]string, error) {
