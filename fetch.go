@@ -1,4 +1,4 @@
-package main
+package douparser
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ const (
 
 func buildEventsPageUrl(page int, fromArchive bool) string {
 	if fromArchive {
-		return archiveURL + "/page-" + strconv.Itoa(page) + "/"
+		return archiveURL + "/" + strconv.Itoa(page) + "/"
 	}
 
 	return calendarURL + "/page-" + strconv.Itoa(page) + "/"

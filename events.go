@@ -1,9 +1,7 @@
 package douparser
 
 import (
-	"github.com/PuerkitoBio/goquery"
 	"strconv"
-	"strings"
 )
 
 const (
@@ -53,20 +51,4 @@ func Events() ([]Event, error) {
 	}
 
 	return events, nil
-}
-
-func Tags() ([]string, error) {
-	tags := make([]string, 0)
-
-	doc, err := fetchPageDocument(1, true)
-	if err != nil {
-		return tags, err
-	}
-
-	doc.Find(selectors["tags"]).Each(func(i int, s *goquery.Selection) {
-		tag := strings.TrimSpace(s.Text())
-		tags = append(tags, tag)
-	})
-
-	return tags, nil
 }
